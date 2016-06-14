@@ -1,15 +1,17 @@
 package com.tapstream.rollbar;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 
 public class NotifyBuilder {
 
@@ -74,6 +76,14 @@ public class NotifyBuilder {
         // UUID if available
         if (context.containsKey(UUID_KEY)) {
             data.put("uuid", context.get(UUID_KEY));
+        }
+
+        try
+        {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            data.put("fingerprint", md.digest(message.substring(0,99).getBytes()));
+        } catch (NoSuchAlgorithmException e)
+        {
         }
 
         // Custom data and log message if there's a throwable

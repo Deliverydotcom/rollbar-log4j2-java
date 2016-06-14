@@ -1,49 +1,53 @@
 package com.tapstream.rollbar;
 
-import static org.junit.Assert.*;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.config.Configuration;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.slf4j.LoggerFactory;
 
-import com.tapstream.rollbar.HttpRequest;
-import com.tapstream.rollbar.RollbarAppender;
+import java.util.Map;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 public class TestRollbarAppender {
     
     String apiKey = "api key";
     String endpoint = "http://rollbar.endpoint/";
     String env = "test";
-    
-    Logger rootLogger;
+
     LoggerContext loggerContext;
     RollbarAppender appender;
     MockHttpRequester httpRequester;
-    
+    Logger rootLogger;
+
     @Before
     public void setup() {
+        System.setProperty("log4j.configurationFile", "log4j.test.xml");
         httpRequester = new MockHttpRequester();
-        
-        rootLogger = (Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        loggerContext = rootLogger.getLoggerContext();
-        loggerContext.reset();
-                
-        appender = new RollbarAppender();
+        rootLogger = LogManager.getLogger();
+        Map<String, Appender> appenderMap = ((org.apache.logging.log4j.core.Logger) rootLogger).getAppenders();
+
+        appender = (RollbarAppender) appenderMap.get("rollbar");
         appender.setUrl(endpoint);
-        appender.setApiKey(apiKey);
         appender.setEnvironment(env);
+        appender.setApiKey(apiKey);
         appender.setAsync(false);
         appender.setHttpRequester(httpRequester);
-        appender.setContext(loggerContext);
-        appender.start();
-        assertTrue(appender.isStarted());
-        rootLogger.addAppender(appender);        
+        ((org.apache.logging.log4j.core.Logger) rootLogger).addAppender(appender);
+
+        LoggerContext context = (LoggerContext) LogManager.getContext();
+        Configuration config = context.getConfiguration();
+        config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME).addAppender(appender, null, null);
+
+        context.updateLoggers(config);
+
     }
     
     @After
@@ -51,7 +55,7 @@ public class TestRollbarAppender {
         
     }
     
-    private void checkCommonRequestFields(HttpRequest request){
+    private void checkCommonRequestFields(HttpRequest request) {
         assertNotNull(request);
         assertEquals("POST", request.getMethod());
         assertEquals(endpoint, request.getUrl().toString());
@@ -63,7 +67,7 @@ public class TestRollbarAppender {
         rootLogger.info(testMsg);
         HttpRequest request  = httpRequester.getRequest();
         checkCommonRequestFields(request);
-        
+
         JSONObject root = new JSONObject(new String(request.getBody()));
         assertEquals(apiKey, root.get("access_token"));
         
