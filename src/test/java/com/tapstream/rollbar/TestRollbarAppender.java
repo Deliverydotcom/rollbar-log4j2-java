@@ -38,7 +38,6 @@ public class TestRollbarAppender {
         appender.setUrl(endpoint);
         appender.setEnvironment(env);
         appender.setApiKey(apiKey);
-        appender.setAsync(false);
         appender.setHttpRequester(httpRequester);
         ((org.apache.logging.log4j.core.Logger) rootLogger).addAppender(appender);
 
@@ -77,6 +76,7 @@ public class TestRollbarAppender {
         assertEquals("java", data.get("platform"));
         assertEquals("java", data.get("language"));
         assertEquals("java", data.get("framework"));
+        assertEquals("098f6bcd4621d373cade4e832627b4f6", data.get("fingerprint"));
         
         JSONObject body = data.getJSONObject("body");
         assertEquals(testMsg, body.getJSONObject("message").get("body"));

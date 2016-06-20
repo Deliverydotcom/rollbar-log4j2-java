@@ -2,7 +2,7 @@
 <Configuration status="error" packages="org.deliverycom.log4j2">
     <Appenders>
         <Console name="STDOUT" />
-        <Rollbar name="rollbar" environment="test" apikey="api key"/>
+        <Rollbar name="rollbar" environment="test" apikey="api key" system="test"/>
     </Appenders>
     <Loggers>
         <Root level="INFO">

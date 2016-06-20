@@ -134,7 +134,6 @@ public class RollbarAppender extends AbstractAppender
         }
 
         final JSONObject payload = payloadBuilder.build(levelName, message, throwable, propertyMap);
-        payload.append("eco-system", getSystem() );
         final HttpRequest request = new HttpRequest(url, "POST");
         request.setHeader("Content-Type", "application/json");
         request.setHeader("Accept", "application/json");
