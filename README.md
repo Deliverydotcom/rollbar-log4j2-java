@@ -11,13 +11,13 @@ account: sign up for an account [here](https://rollbar.com/signup/).
 Logback
 ------------
 
-	<appender name="ROLLBAR" class="com.tapstream.rollbar.RollbarAppender">
-        <apiKey>[YOUR APIKEY HERE]</apiKey>
+	<Rollbar name="rollbar" apikey="[YOUR APIKEY HERE]" environment="dev" system="laundry">
+        <apiKey></apiKey>
         <environment>local</environment>
-    </appender>
+    </Rollbar>
 
 	<root level="debug">
-		<appender-ref ref="ROLLBAR"/>
+		<appender-ref ref="rollbar"/>
 	</root>
 
 Appender parameters:
