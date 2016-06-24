@@ -1,19 +1,21 @@
 package com.tapstream.rollbar;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
 public class NotifyBuilder {
 
-    private static final String NOTIFIER_VERSION = "0.2";
+    private static final String NOTIFIER_VERSION = "1.0";
 
     private static final String PERSON_EMAIL_KEY = "person.email";
     private static final String PERSON_USERNAME_KEY = "person.username";
@@ -65,6 +67,12 @@ public class NotifyBuilder {
         data.put("body", getBody(message, throwable));
         data.put("request", buildRequest(context));
 
+        int length = 99;
+        if(message.length() < length) {
+            length = message.length();
+        }
+        data.put("title", message.subSequence(0, length));
+
         // Add person if available
         JSONObject person = buildPerson(context);
         if (person != null) {
@@ -75,6 +83,13 @@ public class NotifyBuilder {
         if (context.containsKey(UUID_KEY)) {
             data.put("uuid", context.get(UUID_KEY));
         }
+
+        String fingerprint = generateFingerPrint(message);
+        if(fingerprint != null)
+        {
+            data.put("fingerprint", fingerprint);
+        }
+
 
         // Custom data and log message if there's a throwable
         JSONObject customData = buildCustom(context);
@@ -250,6 +265,45 @@ public class NotifyBuilder {
         trace.put("exception", exceptionData);
 
         return trace;
+    }
+
+    /**
+     * part of the code is courtesy of mkyong.com
+     * @param message
+     * @return
+     */
+    private String generateFingerPrint(String message) {
+        try
+        {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            int length = 99;
+            if(message.length() < length) {
+                length = message.length();
+            }
+
+            byte[] byteData = md.digest(message.substring(0, length).getBytes());
+
+            //convert the byte to hex format method 1
+            StringBuffer sb = new StringBuffer();
+            for (int i = 0; i < byteData.length; i++) {
+                sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
+            }
+
+            //convert the byte to hex format method 2
+            StringBuffer hexString = new StringBuffer();
+            for (int i=0;i<byteData.length;i++) {
+                String hex=Integer.toHexString(0xff & byteData[i]);
+                if(hex.length()==1) hexString.append('0');
+                hexString.append(hex);
+            }
+
+            return hexString.toString();
+        } catch (NoSuchAlgorithmException e)
+        {
+
+        }
+
+         return null;
     }
 
 }

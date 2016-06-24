@@ -3,21 +3,21 @@ Rollbar Logback
 
 [![Build Status](https://travis-ci.org/tapstream/rollbar-logback.svg?branch=master)](https://travis-ci.org/tapstream/rollbar-logback)
 
-This is a fork of the ahaid's [Rollbar Logback Appender](https://github.com/ahaid/rollbar-logback) created on
-July 27th, 2014 for use with the error aggregation service [Rollbar](https://rollbar.com/). You will need a Rollbar
+This is a fork of the Tapstream's [Rollbar Logback Appender](https://github.com/tapstream/rollbar-logback) created on
+June 10th, 2016 for use with the error aggregation service [Rollbar](https://rollbar.com/). You will need a Rollbar
 account: sign up for an account [here](https://rollbar.com/signup/).
 
 
 Logback
 ------------
 
-	<appender name="ROLLBAR" class="com.tapstream.rollbar.RollbarAppender">
-        <apiKey>[YOUR APIKEY HERE]</apiKey>
+	<Rollbar name="rollbar" apikey="[YOUR APIKEY HERE]" environment="dev" system="laundry">
+        <apiKey></apiKey>
         <environment>local</environment>
-    </appender>
+    </Rollbar>
 
 	<root level="debug">
-		<appender-ref ref="ROLLBAR"/>
+		<appender-ref ref="rollbar"/>
 	</root>
 
 Appender parameters:
