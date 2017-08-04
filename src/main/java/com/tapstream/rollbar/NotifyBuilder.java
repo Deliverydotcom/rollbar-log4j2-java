@@ -1,15 +1,12 @@
 package com.tapstream.rollbar;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -24,276 +21,311 @@ public class NotifyBuilder {
 
     private final String accessToken;
     private final String environment;
-    private final String rollbarContext;
 
-    private final JSONObject notifierData;
-    private final JSONObject serverData;
+    private final JsonObject notifierData;
+    private final JsonObject serverData;
 
-    public NotifyBuilder(String accessToken, String environment, String rollbarContext) throws JSONException {
+    public NotifyBuilder(String accessToken, String environment)
+    {
         this.accessToken = accessToken;
         this.environment = environment;
-        this.rollbarContext = rollbarContext;
         this.notifierData = getNotifierData();
         this.serverData = getServerData();
     }
-    
 
-    private String getValue(String key, Map<String, String> context, String defaultValue) {
-        if (context == null) return defaultValue;
+    private String getValue(String key, Map<String, String> context, String defaultValue)
+    {
+        if (context == null)
+        {
+            return defaultValue;
+        }
         Object value = context.get(key);
-        if (value == null) return defaultValue;
+        if (value == null)
+        {
+            return defaultValue;
+        }
         return value.toString();
     }
 
-    public JSONObject build(String level, String message, Throwable throwable, Map<String, String> context) throws JSONException {
+    public JsonObject build(String level, String message, Throwable throwable, Map<String, String> context)
+    {
 
-        JSONObject payload = new JSONObject();
+        JsonObject payload = new JsonObject();
 
         // access token
-        payload.put("access_token", this.accessToken);
+        payload.addProperty("access_token", this.accessToken);
 
         // data
-        JSONObject data = new JSONObject();
+        JsonObject data = new JsonObject();
 
         // general values
-        data.put("environment", this.environment);
-        data.put("level", level);
-        data.put("platform", getValue("platform", context, "java"));
-        data.put("framework", getValue("framework", context, "java"));
-        data.put("language", "java");
-        if (rollbarContext != null && !rollbarContext.isEmpty())
-            data.put("context", rollbarContext);
-        data.put("timestamp", System.currentTimeMillis() / 1000);
-        data.put("body", getBody(message, throwable));
-        data.put("request", buildRequest(context));
+        data.addProperty("environment", this.environment);
+        data.addProperty("level", level);
+        data.addProperty("platform", getValue("platform", context, "java"));
+        data.addProperty("framework", getValue("framework", context, "java"));
+        data.addProperty("language", "java");
+        data.addProperty("timestamp", System.currentTimeMillis() / 1000);
+        data.add("body", getBody(message, throwable));
+        data.add("request", buildRequest(context));
 
         int length = 99;
-        if(message.length() < length) {
+        if (message.length() < length)
+        {
             length = message.length();
         }
-        data.put("title", message.subSequence(0, length));
+        data.addProperty("title", message.substring(0, length));
 
         // Add person if available
-        JSONObject person = buildPerson(context);
-        if (person != null) {
-            data.put("person", person);
+        JsonObject person = buildPerson(context);
+        if (person != null)
+        {
+            data.add("person", person);
         }
 
         // UUID if available
-        if (context.containsKey(UUID_KEY)) {
-            data.put("uuid", context.get(UUID_KEY));
+        if (context.containsKey(UUID_KEY))
+        {
+            data.addProperty("uuid", context.get(UUID_KEY));
         }
 
         String fingerprint = generateFingerPrint(message);
-        if(fingerprint != null)
+        if (fingerprint != null)
         {
-            data.put("fingerprint", fingerprint);
+            data.addProperty("fingerprint", fingerprint);
         }
-
 
         // Custom data and log message if there's a throwable
-        JSONObject customData = buildCustom(context);
-        if (throwable != null && message != null) {
-            customData.put("log", message);
+        JsonObject customData = buildCustom(context);
+        if (throwable != null && message != null)
+        {
+            customData.addProperty("log", message);
         }
-        
-        data.put("custom", customData);
-        data.put("client", buildClient(context));
-        if (serverData != null) {
-            data.put("server", serverData);
+
+        data.add("custom", customData);
+        data.add("client", buildClient(context));
+        if (serverData != null)
+        {
+            data.add("server", serverData);
         }
-        data.put("notifier", notifierData);
-        payload.put("data", data);
+        data.add("notifier", notifierData);
+        payload.add("data", data);
 
         return payload;
     }
 
-    private JSONObject buildClient(Map<String, String> ctx){
-        JSONObject client = new JSONObject();
-        JSONObject javaScript = new JSONObject();
-        javaScript.put("browser", ctx.get(RollbarFilter.REQUEST_USER_AGENT));
-        client.put("javascript", javaScript);
+    private JsonObject buildClient(Map<String, String> ctx)
+    {
+        JsonObject client = new JsonObject();
+        JsonObject javaScript = new JsonObject();
+        javaScript.addProperty("browser", ctx.get(RollbarFilter.REQUEST_USER_AGENT));
+        client.add("javascript", javaScript);
         return client;
     }
-    
-    private JSONObject buildCustom(Map<String, String> ctx){
-        JSONObject custom = new JSONObject();
-        for (Entry<String, String> ctxEntry : ctx.entrySet()){
+
+    private JsonObject buildCustom(Map<String, String> ctx)
+    {
+        JsonObject custom = new JsonObject();
+        for (Entry<String, String> ctxEntry : ctx.entrySet())
+        {
             String key = ctxEntry.getKey();
             if (key.startsWith(RollbarFilter.REQUEST_PREFIX))
+            {
                 continue;
-            custom.put(key, ctxEntry.getValue());
+            }
+            custom.addProperty(key, ctxEntry.getValue());
         }
         return custom;
     }
 
-    private JSONObject buildPerson(Map<String, String> ctx) {
-        JSONObject request = new JSONObject();
+    private JsonObject buildPerson(Map<String, String> ctx)
+    {
+        JsonObject request = new JsonObject();
         boolean populated = false;
 
-        if (ctx.containsKey(PERSON_ID_KEY)) {
-            request.put("id", ctx.get(PERSON_ID_KEY));
+        if (ctx.containsKey(PERSON_ID_KEY))
+        {
+            request.addProperty("id", ctx.get(PERSON_ID_KEY));
             populated = true;
         }
-        if (ctx.containsKey(PERSON_USERNAME_KEY)) {
-            request.put("username", ctx.get(PERSON_USERNAME_KEY));
+        if (ctx.containsKey(PERSON_USERNAME_KEY))
+        {
+            request.addProperty("username", ctx.get(PERSON_USERNAME_KEY));
             populated = true;
         }
-        if (ctx.containsKey(PERSON_EMAIL_KEY)) {
-            request.put("email", ctx.get(PERSON_EMAIL_KEY));
+        if (ctx.containsKey(PERSON_EMAIL_KEY))
+        {
+            request.addProperty("email", ctx.get(PERSON_EMAIL_KEY));
             populated = true;
         }
 
         return populated ? request : null;
     }
 
-    private String stripPrefix(String value, String prefix){
+    private String stripPrefix(String value, String prefix)
+    {
         return value.substring(prefix.length(), value.length());
     }
-    
-    private JSONObject buildRequest(Map<String, String> ctx){
-        JSONObject request = new JSONObject();
-        request.put("url", ctx.get(RollbarFilter.REQUEST_URL));
-        request.put("query_string", ctx.get(RollbarFilter.REQUEST_QS));
-        
-        JSONObject headers = new JSONObject();
-        JSONObject params = new JSONObject();
-        
-        for (Entry<String, String> ctxEntry : ctx.entrySet()){
+
+    private JsonObject buildRequest(Map<String, String> ctx)
+    {
+        JsonObject request = new JsonObject();
+        request.addProperty("url", ctx.get(RollbarFilter.REQUEST_URL));
+        request.addProperty("query_string", ctx.get(RollbarFilter.REQUEST_QS));
+
+        JsonObject headers = new JsonObject();
+        JsonObject params = new JsonObject();
+
+        for (Entry<String, String> ctxEntry : ctx.entrySet())
+        {
             String key = ctxEntry.getKey();
-            if (key.startsWith(RollbarFilter.REQUEST_HEADER_PREFIX)){
-                headers.put(stripPrefix(key, RollbarFilter.REQUEST_HEADER_PREFIX), ctxEntry.getValue());
-            } else if (key.startsWith(RollbarFilter.REQUEST_PARAM_PREFIX)){
-                params.put(stripPrefix(key, RollbarFilter.REQUEST_PARAM_PREFIX), ctxEntry.getValue());
+            if (key.startsWith(RollbarFilter.REQUEST_HEADER_PREFIX))
+            {
+                headers.addProperty(stripPrefix(key, RollbarFilter.REQUEST_HEADER_PREFIX), ctxEntry.getValue());
+            } else if (key.startsWith(RollbarFilter.REQUEST_PARAM_PREFIX))
+            {
+                params.addProperty(stripPrefix(key, RollbarFilter.REQUEST_PARAM_PREFIX), ctxEntry.getValue());
             }
         }
-        
-        request.put("headers", headers);
-        
+
+        request.add("headers", headers);
+
         String method = ctx.get(RollbarFilter.REQUEST_METHOD);
-        if (method != null){
-            request.put("method", method);
-            switch (method){
-            case "GET":
-                request.put("GET", params);
-                break;
-            case "POST":
-                request.put("POST", params);
-                break;
+        if (method != null)
+        {
+            request.addProperty("method", method);
+            switch (method)
+            {
+                case "GET":
+                    request.add("GET", params);
+                    break;
+                case "POST":
+                    request.add("POST", params);
+                    break;
             }
         }
-        
-        
-        request.put("user_ip", ctx.get(RollbarFilter.REQUEST_REMOTE_ADDR));
+
+        request.addProperty("user_ip", ctx.get(RollbarFilter.REQUEST_REMOTE_ADDR));
         return request;
     }
 
-    private JSONObject getBody(String message, Throwable original) throws JSONException {
-        JSONObject body = new JSONObject();
+    private JsonObject getBody(String message, Throwable original)
+    {
+        JsonObject body = new JsonObject();
 
         Throwable throwable = original;
 
-        if (throwable != null) {
-            List<JSONObject> traces = new ArrayList<JSONObject>();
-            do {
-                traces.add(0, createTrace(throwable));
+        JsonArray traces = new JsonArray();
+        if (throwable != null)
+        {
+            do
+            {
+                traces.add(createTrace(throwable));
                 throwable = throwable.getCause();
             } while (throwable != null);
 
-            body.put("trace_chain", new JSONArray(traces));
+            body.add("trace_chain", traces);
         }
 
-        if (original == null && message != null) {
-            JSONObject messageBody = new JSONObject();
-            messageBody.put("body", message);
-            body.put("message", messageBody);
+        if (original == null && message != null)
+        {
+            JsonObject messageBody = new JsonObject();
+            messageBody.addProperty("body", message);
+            body.add("message", messageBody);
         }
 
         return body;
     }
 
-    private JSONObject getNotifierData() throws JSONException {
-        JSONObject notifier = new JSONObject();
-        notifier.put("name", "rollbar-java");
-        notifier.put("version", NOTIFIER_VERSION);
+    private JsonObject getNotifierData()
+    {
+        JsonObject notifier = new JsonObject();
+        notifier.addProperty("name", "rollbar-java");
+        notifier.addProperty("version", NOTIFIER_VERSION);
         return notifier;
     }
 
-    private JSONObject getServerData() throws JSONException {
-        try {
+    private JsonObject getServerData()
+    {
+        try
+        {
             InetAddress localhost = InetAddress.getLocalHost();
 
             String host = localhost.getHostName();
             String ip = localhost.getHostAddress();
 
-            JSONObject notifier = new JSONObject();
-            notifier.put("host", host);
-            notifier.put("ip", ip);
+            JsonObject notifier = new JsonObject();
+            notifier.addProperty("host", host);
+            notifier.addProperty("ip", ip);
             return notifier;
-        } catch (UnknownHostException e) {
+        } catch (UnknownHostException e)
+        {
             return null;
         }
     }
 
-    private JSONObject createTrace(Throwable throwable) throws JSONException {
-        JSONObject trace = new JSONObject();
+    private JsonObject createTrace(Throwable throwable)
+    {
+        JsonObject trace = new JsonObject();
 
-        JSONArray frames = new JSONArray();
+        JsonArray frames = new JsonArray();
 
         StackTraceElement[] elements = throwable.getStackTrace();
-        for (int i = elements.length - 1; i >= 0; --i) {
+        for (int i = elements.length - 1; i >= 0; --i)
+        {
             StackTraceElement element = elements[i];
 
-            JSONObject frame = new JSONObject();
+            JsonObject frame = new JsonObject();
 
-            frame.put("class_name", element.getClassName());
-            frame.put("filename", element.getFileName());
-            frame.put("method", element.getMethodName());
+            frame.addProperty("class_name", element.getClassName());
+            frame.addProperty("filename", element.getFileName());
+            frame.addProperty("method", element.getMethodName());
 
-            if (element.getLineNumber() > 0) {
-                frame.put("lineno", element.getLineNumber());
+            if (element.getLineNumber() > 0)
+            {
+                frame.addProperty("lineno", element.getLineNumber());
             }
 
-            frames.put(frame);
+            frames.add(frame);
         }
 
-        JSONObject exceptionData = new JSONObject();
-        exceptionData.put("class", throwable.getClass().getName());
-        exceptionData.put("message", throwable.getMessage());
+        JsonObject exceptionData = new JsonObject();
+        exceptionData.addProperty("class", throwable.getClass().getName());
+        exceptionData.addProperty("message", throwable.getMessage());
 
-        trace.put("frames", frames);
-        trace.put("exception", exceptionData);
+        trace.add("frames", frames);
+        trace.add("exception", exceptionData);
 
         return trace;
     }
 
     /**
      * part of the code is courtesy of mkyong.com
+     *
      * @param message
      * @return
      */
-    private String generateFingerPrint(String message) {
+    private String generateFingerPrint(String message)
+    {
         try
         {
             MessageDigest md = MessageDigest.getInstance("MD5");
             int length = 99;
-            if(message.length() < length) {
+            if (message.length() < length)
+            {
                 length = message.length();
             }
 
             byte[] byteData = md.digest(message.substring(0, length).getBytes());
 
-            //convert the byte to hex format method 1
-            StringBuffer sb = new StringBuffer();
-            for (int i = 0; i < byteData.length; i++) {
-                sb.append(Integer.toString((byteData[i] & 0xff) + 0x100, 16).substring(1));
-            }
-
             //convert the byte to hex format method 2
             StringBuffer hexString = new StringBuffer();
-            for (int i=0;i<byteData.length;i++) {
-                String hex=Integer.toHexString(0xff & byteData[i]);
-                if(hex.length()==1) hexString.append('0');
+            for (byte aByteData : byteData)
+            {
+                String hex = Integer.toHexString(0xff & aByteData);
+                if (hex.length() == 1)
+                {
+                    hexString.append('0');
+                }
                 hexString.append(hex);
             }
 
@@ -303,7 +335,7 @@ public class NotifyBuilder {
 
         }
 
-         return null;
+        return null;
     }
 
 }

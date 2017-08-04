@@ -1,12 +1,13 @@
 package com.tapstream.rollbar;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.Appender;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
-import org.json.JSONArray;
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -18,14 +19,12 @@ import static org.junit.Assert.assertNotNull;
 
 public class TestRollbarAppender {
     
-    String apiKey = "api key";
-    String endpoint = "http://rollbar.endpoint/";
-    String env = "test";
+    private String apiKey = "api key";
+    private String endpoint = "http://rollbar.endpoint/";
+    private String env = "test";
 
-    LoggerContext loggerContext;
-    RollbarAppender appender;
-    MockHttpRequester httpRequester;
-    Logger rootLogger;
+    private MockHttpRequester httpRequester;
+    private Logger rootLogger;
 
     @Before
     public void setup() {
@@ -34,7 +33,7 @@ public class TestRollbarAppender {
         rootLogger = LogManager.getLogger();
         Map<String, Appender> appenderMap = ((org.apache.logging.log4j.core.Logger) rootLogger).getAppenders();
 
-        appender = (RollbarAppender) appenderMap.get("rollbar");
+        RollbarAppender appender = (RollbarAppender) appenderMap.get("rollbar");
         appender.setUrl(endpoint);
         appender.setEnvironment(env);
         appender.setApiKey(apiKey);
@@ -67,19 +66,19 @@ public class TestRollbarAppender {
         HttpRequest request  = httpRequester.getRequest();
         checkCommonRequestFields(request);
 
-        JSONObject root = new JSONObject(new String(request.getBody()));
-        assertEquals(apiKey, root.get("access_token"));
+        JsonObject root = new JsonParser().parse(new String(request.getBody())).getAsJsonObject();
+        assertEquals(apiKey, root.get("access_token").getAsString());
         
-        JSONObject data = root.getJSONObject("data");
-        assertEquals(env, data.get("environment"));
-        assertEquals("info", data.get("level"));
-        assertEquals("java", data.get("platform"));
-        assertEquals("java", data.get("language"));
-        assertEquals("java", data.get("framework"));
-        assertEquals("098f6bcd4621d373cade4e832627b4f6", data.get("fingerprint"));
+        JsonObject data = root.getAsJsonObject("data");
+        assertEquals(env, data.get("environment").getAsString());
+        assertEquals("info", data.get("level").getAsString());
+        assertEquals("java", data.get("platform").getAsString());
+        assertEquals("java", data.get("language").getAsString());
+        assertEquals("java", data.get("framework").getAsString());
+        assertEquals("098f6bcd4621d373cade4e832627b4f6", data.get("fingerprint").getAsString());
         
-        JSONObject body = data.getJSONObject("body");
-        assertEquals(testMsg, body.getJSONObject("message").get("body"));
+        JsonObject body = data.getAsJsonObject("body");
+        assertEquals(testMsg, body.getAsJsonObject("message").get("body").getAsString());
     }
     
     @Test
@@ -98,30 +97,30 @@ public class TestRollbarAppender {
         HttpRequest request  = httpRequester.getRequest();
         checkCommonRequestFields(request);
         
-        JSONObject root = new JSONObject(new String(request.getBody()));
-        assertEquals(apiKey, root.get("access_token"));
+        JsonObject root = new JsonParser().parse(new String(request.getBody())).getAsJsonObject();
+        assertEquals(apiKey, root.get("access_token").getAsString());
         
-        JSONObject data = root.getJSONObject("data");
-        assertEquals(env, data.get("environment"));
-        assertEquals("error", data.get("level"));
-        assertEquals("java", data.get("platform"));
-        assertEquals("java", data.get("language"));
-        assertEquals("java", data.get("framework"));
+        JsonObject data = root.getAsJsonObject("data");
+        assertEquals(env, data.get("environment").getAsString());
+        assertEquals("error", data.get("level").getAsString());
+        assertEquals("java", data.get("platform").getAsString());
+        assertEquals("java", data.get("language").getAsString());
+        assertEquals("java", data.get("framework").getAsString());
     
-        JSONObject body = data.getJSONObject("body");
-        JSONArray traceChain = body.getJSONArray("trace_chain");
-        JSONObject firstTrace = traceChain.getJSONObject(0);
-        JSONArray frames = firstTrace.getJSONArray("frames");
-        JSONObject lastFrame = frames.getJSONObject(frames.length() - 1);
-        assertEquals("TestRollbarAppender.java", lastFrame.get("filename"));
-        assertEquals("testThrowable", lastFrame.get("method"));
-        assertEquals("com.tapstream.rollbar.TestRollbarAppender", lastFrame.get("class_name"));
-        JSONObject firstException = firstTrace.getJSONObject("exception");
-        assertEquals(testThrowableMsg, firstException.get("message"));
-        assertEquals("java.lang.Exception", firstException.get("class"));
+        JsonObject body = data.getAsJsonObject("body");
+        JsonArray traceChain = body.getAsJsonArray("trace_chain");
+        JsonObject firstTrace = traceChain.get(0).getAsJsonObject();
+        JsonArray frames = firstTrace.getAsJsonArray("frames");
+        JsonObject lastFrame = frames.get(frames.size() - 1).getAsJsonObject();
+        assertEquals("TestRollbarAppender.java", lastFrame.get("filename").getAsString());
+        assertEquals("testThrowable", lastFrame.get("method").getAsString());
+        assertEquals("com.tapstream.rollbar.TestRollbarAppender", lastFrame.get("class_name").getAsString());
+        JsonObject firstException = firstTrace.getAsJsonObject("exception");
+        assertEquals(testThrowableMsg, firstException.get("message").getAsString());
+        assertEquals("java.lang.Exception", firstException.get("class").getAsString());
         
-        JSONObject custom = data.getJSONObject("custom");
-        assertEquals(testMsg, custom.get("log"));
+        JsonObject custom = data.getAsJsonObject("custom");
+        assertEquals(testMsg, custom.get("log").getAsString());
     }
     
     
