@@ -88,12 +88,6 @@ public class NotifyBuilder {
             data.addProperty("uuid", context.get(UUID_KEY));
         }
 
-        String fingerprint = generateFingerPrint(message);
-        if (fingerprint != null)
-        {
-            data.addProperty("fingerprint", fingerprint);
-        }
-
         // Custom data and log message if there's a throwable
         JsonObject customData = buildCustom(context);
         if (throwable != null && message != null)
@@ -296,46 +290,6 @@ public class NotifyBuilder {
         trace.add("exception", exceptionData);
 
         return trace;
-    }
-
-    /**
-     * part of the code is courtesy of mkyong.com
-     *
-     * @param message
-     * @return
-     */
-    private String generateFingerPrint(String message)
-    {
-        try
-        {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            int length = 99;
-            if (message.length() < length)
-            {
-                length = message.length();
-            }
-
-            byte[] byteData = md.digest(message.substring(0, length).getBytes());
-
-            //convert the byte to hex format method 2
-            StringBuffer hexString = new StringBuffer();
-            for (byte aByteData : byteData)
-            {
-                String hex = Integer.toHexString(0xff & aByteData);
-                if (hex.length() == 1)
-                {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e)
-        {
-
-        }
-
-        return null;
     }
 
 }
